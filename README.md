@@ -1,2 +1,3 @@
 # puzzleblogserver
- A simple implementation of a puzzleblogservice server calling MongoDB.
+
+A simple implementation of a [puzzleblogservice](https://github.com/dvaumoron/puzzleblogservice) server calling [MongoDB](https://www.mongodb.com/).
