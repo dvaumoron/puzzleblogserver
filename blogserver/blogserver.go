@@ -89,7 +89,7 @@ GeneratePostIdStep:
 		return nil, errInternal
 	}
 
-	// can call [0] because result has only one field
+	// can call [0] to get postId because result has only one field
 	newPostId = mongoclient.ExtractUint64(result[0].Value) + 1
 
 CreatePostStep:
