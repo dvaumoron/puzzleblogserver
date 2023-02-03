@@ -67,6 +67,7 @@ func (s server) CreatePost(ctx context.Context, request *pb.CreateRequest) (*pb.
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
 	blogId := request.BlogId
+	filter := bson.D{{Key: blogIdKey, Value: blogId}}
 	post := bson.M{
 		blogIdKey: blogId, userIdKey: request.UserId,
 		titleKey: request.Title, textKey: request.Text,
@@ -77,9 +78,7 @@ func (s server) CreatePost(ctx context.Context, request *pb.CreateRequest) (*pb.
 
 GeneratePostIdStep:
 	var result bson.D
-	err = collection.FindOne(
-		ctx, bson.D{{Key: blogIdKey, Value: blogId}}, optsMaxPostId,
-	).Decode(&result)
+	err = collection.FindOne(ctx, filter, optsMaxPostId).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			goto CreatePostStep
