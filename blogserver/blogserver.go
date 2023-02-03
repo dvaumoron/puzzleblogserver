@@ -201,6 +201,9 @@ func disconnect(client *mongo.Client, ctx context.Context) {
 
 func convertToContents(posts []bson.M) []*pb.Content {
 	contents := make([]*pb.Content, 0, len(posts))
+	for _, post := range posts {
+		contents = append(contents, convertToContent(post))
+	}
 	return contents
 }
 
