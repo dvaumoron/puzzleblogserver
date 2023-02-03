@@ -169,7 +169,7 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	return &pb.Contents{List: convertToContents(results), Total: uint64(total)}, nil
+	return &pb.Contents{List: mongoclient.ConvertSlice(results, convertToContent), Total: uint64(total)}, nil
 }
 
 func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Response, error) {
@@ -190,14 +190,6 @@ func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Resp
 		return nil, errInternal
 	}
 	return &pb.Response{Success: true}, nil
-}
-
-func convertToContents(posts []bson.M) []*pb.Content {
-	contents := make([]*pb.Content, 0, len(posts))
-	for _, post := range posts {
-		contents = append(contents, convertToContent(post))
-	}
-	return contents
 }
 
 func convertToContent(post bson.M) *pb.Content {
