@@ -24,15 +24,14 @@ import (
 	"strings"
 
 	pb "github.com/dvaumoron/puzzleblogservice"
+	mongoclient "github.com/dvaumoron/puzzlemongoclient"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const collectionName = "posts"
 
-const idKey = "_id"
 const blogIdKey = "blogId"
 const postIdKey = "postId"
 const userIdKey = "userId"
@@ -63,7 +62,7 @@ func (s server) CreatePost(ctx context.Context, request *pb.CreateRequest) (*pb.
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	defer disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -91,7 +90,7 @@ GeneratePostIdStep:
 	}
 
 	// can call [0] because result has only one field
-	newPostId = extractUint64(result[0].Value) + 1
+	newPostId = mongoclient.ExtractUint64(result[0].Value) + 1
 
 CreatePostStep:
 	post[postIdKey] = newPostId
@@ -114,7 +113,7 @@ func (s server) GetPost(ctx context.Context, request *pb.IdRequest) (*pb.Content
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	defer disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -139,7 +138,7 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	defer disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 	filters := bson.D{{Key: blogIdKey, Value: request.BlogId}}
@@ -156,7 +155,7 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 	paginate.SetLimit(int64(request.End) - start)
 
 	if filter := request.Filter; filter != "" {
-		filters = append(filters, bson.E{Key: titleKey, Value: buildFilterRegex(filter)})
+		filters = append(filters, bson.E{Key: titleKey, Value: buildRegexFilter(filter)})
 	}
 
 	cursor, err := collection.Find(ctx, filters)
@@ -179,7 +178,7 @@ func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Resp
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	defer disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -193,12 +192,6 @@ func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Resp
 	return &pb.Response{Success: true}, nil
 }
 
-func disconnect(client *mongo.Client, ctx context.Context) {
-	if err := client.Disconnect(ctx); err != nil {
-		log.Print("Error during MongoDB disconnect :", err)
-	}
-}
-
 func convertToContents(posts []bson.M) []*pb.Content {
 	contents := make([]*pb.Content, 0, len(posts))
 	for _, post := range posts {
@@ -210,14 +203,14 @@ func convertToContents(posts []bson.M) []*pb.Content {
 func convertToContent(post bson.M) *pb.Content {
 	title, _ := post[titleKey].(string)
 	text, _ := post[textKey].(string)
-	id, _ := post[idKey].(primitive.ObjectID)
 	return &pb.Content{
-		PostId: extractUint64(post[postIdKey]), UserId: extractUint64(post[userIdKey]),
-		Title: title, Text: text, CreatedAt: id.Timestamp().Unix(),
+		PostId: mongoclient.ExtractUint64(post[postIdKey]),
+		UserId: mongoclient.ExtractUint64(post[userIdKey]),
+		Title:  title, Text: text, CreatedAt: mongoclient.ExtractCreateDate(post).Unix(),
 	}
 }
 
-func buildFilterRegex(filter string) bson.D {
+func buildRegexFilter(filter string) bson.D {
 	var regexBuilder strings.Builder
 	if strings.Index(filter, ".*") != 0 {
 		regexBuilder.WriteString(".*")
@@ -227,14 +220,4 @@ func buildFilterRegex(filter string) bson.D {
 		regexBuilder.WriteString(".*")
 	}
 	return bson.D{{Key: "$regex", Value: regexBuilder.String()}}
-}
-
-func extractUint64(v any) uint64 {
-	switch casted := v.(type) {
-	case int32:
-		return uint64(casted)
-	case int64:
-		return uint64(casted)
-	}
-	return 0
 }
