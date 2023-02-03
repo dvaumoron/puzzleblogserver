@@ -18,31 +18,14 @@
 package main
 
 import (
-	"log"
-	"net"
-	"os"
-
 	"github.com/dvaumoron/puzzleblogserver/blogserver"
 	pb "github.com/dvaumoron/puzzleblogservice"
+	grpcserver "github.com/dvaumoron/puzzlegrpcserver"
 	mongoclient "github.com/dvaumoron/puzzlemongoclient"
-	"github.com/joho/godotenv"
-	"google.golang.org/grpc"
 )
 
 func main() {
-	if godotenv.Overload() == nil {
-		log.Println("Loaded .env file")
-	}
-
-	lis, err := net.Listen("tcp", ":"+os.Getenv("SERVICE_PORT"))
-	if err != nil {
-		log.Fatal("Failed to listen :", err)
-	}
-
-	s := grpc.NewServer()
+	s := grpcserver.New()
 	pb.RegisterBlogServer(s, blogserver.New(mongoclient.Create()))
-	log.Println("Listening at", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		log.Fatal("Failed to serve :", err)
-	}
+	s.Start()
 }
