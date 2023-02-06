@@ -202,6 +202,7 @@ func convertToContent(post bson.M) *pb.Content {
 }
 
 func buildRegexFilter(filter string) bson.D {
+	filter = strings.ReplaceAll(filter, "%", ".*")
 	var regexBuilder strings.Builder
 	if strings.Index(filter, ".*") != 0 {
 		regexBuilder.WriteString(".*")
