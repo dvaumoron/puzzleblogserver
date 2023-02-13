@@ -103,7 +103,7 @@ CreatePostStep:
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
 	}
-	return &pb.Response{Success: true}, nil
+	return &pb.Response{Success: true, Id: newPostId}, nil
 }
 
 func (s server) GetPost(ctx context.Context, request *pb.IdRequest) (*pb.Content, error) {
