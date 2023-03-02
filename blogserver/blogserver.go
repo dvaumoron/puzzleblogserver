@@ -141,6 +141,9 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 	filters := bson.D{{Key: blogIdKey, Value: request.BlogId}}
+	if filter := request.Filter; filter != "" {
+		filters = append(filters, bson.E{Key: titleKey, Value: buildRegexFilter(filter)})
+	}
 
 	total, err := collection.CountDocuments(ctx, filters)
 	if err != nil {
@@ -151,10 +154,6 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 	paginate := options.Find().SetSort(bson.D{{Key: postIdKey, Value: -1}})
 	start := int64(request.Start)
 	paginate.SetSkip(start).SetLimit(int64(request.End) - start)
-
-	if filter := request.Filter; filter != "" {
-		filters = append(filters, bson.E{Key: titleKey, Value: buildRegexFilter(filter)})
-	}
 
 	cursor, err := collection.Find(ctx, filters)
 	if err != nil {
