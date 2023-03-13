@@ -155,7 +155,7 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 	start := int64(request.Start)
 	paginate.SetSkip(start).SetLimit(int64(request.End) - start)
 
-	cursor, err := collection.Find(ctx, filters)
+	cursor, err := collection.Find(ctx, filters, paginate)
 	if err != nil {
 		log.Println(mongoCallMsg, err)
 		return nil, errInternal
