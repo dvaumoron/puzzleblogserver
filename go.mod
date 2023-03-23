@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/dvaumoron/puzzleblogservice v1.1.0
-	github.com/dvaumoron/puzzlegrpcserver v1.0.1
+	github.com/dvaumoron/puzzlegrpcserver v1.1.0
 	github.com/dvaumoron/puzzlemongoclient v1.2.0
 	go.mongodb.org/mongo-driver v1.11.1
 )
