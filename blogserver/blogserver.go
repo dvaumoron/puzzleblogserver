@@ -20,7 +20,6 @@ package blogserver
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 
 	pb "github.com/dvaumoron/puzzleblogservice"
@@ -28,6 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 )
 
 const collectionName = "posts"
@@ -38,7 +38,7 @@ const userIdKey = "userId"
 const titleKey = "title"
 const textKey = "text"
 
-const mongoCallMsg = "Failed during MongoDB call :"
+const mongoCallMsg = "Failed during MongoDB call"
 
 var errInternal = errors.New("internal service error")
 var errNoPost = errors.New("no blog post with requested ids")
@@ -50,19 +50,20 @@ type server struct {
 	pb.UnimplementedBlogServer
 	clientOptions *options.ClientOptions
 	databaseName  string
+	logger        *zap.Logger
 }
 
-func New(clientOptions *options.ClientOptions, databaseName string) pb.BlogServer {
-	return server{clientOptions: clientOptions, databaseName: databaseName}
+func New(clientOptions *options.ClientOptions, databaseName string, logger *zap.Logger) pb.BlogServer {
+	return server{clientOptions: clientOptions, databaseName: databaseName, logger: logger}
 }
 
 func (s server) CreatePost(ctx context.Context, request *pb.CreateRequest) (*pb.Response, error) {
 	client, err := mongo.Connect(ctx, s.clientOptions)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
-	defer mongoclient.Disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, s.logger, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -84,7 +85,7 @@ GeneratePostIdStep:
 			goto CreatePostStep
 		}
 
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 
@@ -100,7 +101,7 @@ CreatePostStep:
 			goto GeneratePostIdStep
 		}
 
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 	return &pb.Response{Success: true, Id: newPostId}, nil
@@ -109,10 +110,10 @@ CreatePostStep:
 func (s server) GetPost(ctx context.Context, request *pb.IdRequest) (*pb.Content, error) {
 	client, err := mongo.Connect(ctx, s.clientOptions)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
-	defer mongoclient.Disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, s.logger, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -125,7 +126,7 @@ func (s server) GetPost(ctx context.Context, request *pb.IdRequest) (*pb.Content
 			return nil, errNoPost
 		}
 
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 	return convertToContent(result), nil
@@ -134,10 +135,10 @@ func (s server) GetPost(ctx context.Context, request *pb.IdRequest) (*pb.Content
 func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Contents, error) {
 	client, err := mongo.Connect(ctx, s.clientOptions)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
-	defer mongoclient.Disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, s.logger, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 	filters := bson.D{{Key: blogIdKey, Value: request.BlogId}}
@@ -147,7 +148,7 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 
 	total, err := collection.CountDocuments(ctx, filters)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 
@@ -157,13 +158,13 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 
 	cursor, err := collection.Find(ctx, filters, paginate)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 
 	var results []bson.M
 	if err = cursor.All(ctx, &results); err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 	return &pb.Contents{List: mongoclient.ConvertSlice(results, convertToContent), Total: uint64(total)}, nil
@@ -172,10 +173,10 @@ func (s server) GetPosts(ctx context.Context, request *pb.SearchRequest) (*pb.Co
 func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Response, error) {
 	client, err := mongo.Connect(ctx, s.clientOptions)
 	if err != nil {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
-	defer mongoclient.Disconnect(client, ctx)
+	defer mongoclient.Disconnect(client, s.logger, ctx)
 
 	collection := client.Database(s.databaseName).Collection(collectionName)
 
@@ -183,7 +184,7 @@ func (s server) DeletePost(ctx context.Context, request *pb.IdRequest) (*pb.Resp
 		ctx, bson.D{{Key: blogIdKey, Value: request.BlogId}, {Key: postIdKey, Value: request.PostId}},
 	)
 	if err != nil && err != mongo.ErrNoDocuments {
-		log.Println(mongoCallMsg, err)
+		s.logger.Error(mongoCallMsg, zap.Error(err))
 		return nil, errInternal
 	}
 	return &pb.Response{Success: true}, nil
