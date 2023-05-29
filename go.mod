@@ -6,13 +6,13 @@ require (
 	github.com/dvaumoron/puzzleblogservice v1.1.0
 	github.com/dvaumoron/puzzlegrpcserver v1.4.0
 	github.com/dvaumoron/puzzlemongoclient v1.4.0
+	github.com/uptrace/opentelemetry-go-extra/otelzap v0.2.0
 	go.mongodb.org/mongo-driver v1.11.4
 	go.uber.org/zap v1.24.0
 )
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
-	github.com/dvaumoron/puzzlelogger v1.2.1 // indirect
 	github.com/dvaumoron/puzzletelemetry v1.1.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -24,7 +24,6 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelutil v0.2.0 // indirect
-	github.com/uptrace/opentelemetry-go-extra/otelzap v0.2.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
 	github.com/xdg-go/stringprep v1.0.3 // indirect
